@@ -4,7 +4,7 @@ import unittest
 
 import numpy as np
 from numpy.testing import assert_allclose
-from sigutils.plot import mag_phase
+from sigutils.plot import mag_phase, bode
 
 class Test_mag_phase(unittest.TestCase):
     @staticmethod
@@ -16,3 +16,11 @@ class Test_mag_phase(unittest.TestCase):
         assert_allclose(mag, exp_mag, atol=1e-12)
         assert_allclose(phase, exp_phase, atol=1e-12)
 
+
+class Test_bode(unittest.TestCase):
+    def setUp(self):
+        self.freq = np.logspace(0, 4, 51)
+        self.resp = 1/(1 + 1j * self.freq / 100)
+
+    def test_bode(self):
+        bode(self.freq, self.resp)
