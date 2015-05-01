@@ -147,7 +147,7 @@ def bode(freq, resp, xlim=None, xlog=True, mag_lim=None, phase_lim=None,
 
 def bode_sys(system, xlim=None, N=10000, xlog=True, mag_lim=None,
              phase_lim=None, gain_point=None, figax=None, rcParams=None):
-     """Make a nice bode plot for the given system.
+    """Make a nice bode plot for the given system.
 
     Parameters
     ----------
