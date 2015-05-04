@@ -5,7 +5,7 @@ sigutils
 ============================
 """
 
-from sigutils.plot import bode, bode_sys, bode_z
+from sigutils.plot import bode, bode_sys, bode_z, bode_syss
 
 # Versioneer versioning
 from ._version import get_versions

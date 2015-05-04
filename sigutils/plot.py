@@ -41,7 +41,7 @@ def lin_or_logspace(x_min, x_max, N, log):
         if x_min <= 0 or x_max <= 0:
             raise ValueError(
                 "x_min ({0}) and x_max ({1}) must be greater than 0.".format(
-                                                                x_min, x_max))
+                    x_min, x_max))
         else:
             return np.logspace(np.log10(x_min), np.log10(x_max), N)
     else:
@@ -59,6 +59,12 @@ def adjust_y_ticks(ax, delta):
     ax.set_ybound(*ax_new_lim)
     ax.set_yticks(ax_new_ticks)
 
+
+def find_crossings(x, a):
+    """Return array indices where x - a changes sign.
+
+    See http://stackoverflow.com/a/29674950/2823213"""
+    return np.where(np.diff(np.signbit(x - a)))[0]
 
 
 # To do: should db=True be an option?
@@ -131,13 +137,13 @@ def bode(freq, resp, xlim=None, xlog=True, mag_lim=None, phase_lim=None,
         if phase_lim is not None:
             ax2.set_ylim(phase_lim[0], phase_lim[1])
             adjust_y_ticks(ax2, phase_lim[2])
-    
-        if gain_point is not None:
-            gain_index = find_gain(mag, gain_point)
-            ax1.axvline(x=freq[gain_index], color='k',  linestyle='--')
-            ax2.axvline(x=freq[gain_index], color='k',  linestyle='--')
 
-        
+        if gain_point is not None:
+            gain_index = find_crossings(mag, gain_point)
+            for i in gain_index:
+                ax1.axvline(x=freq[i], color='k',  linestyle='--')
+                ax2.axvline(x=freq[i], color='k',  linestyle='--')
+
         ax1.set_ylabel('Magnitude [dB]')
         ax2.set_ylabel('Phase [deg.]')
         ax2.set_xlabel('Frequency')
@@ -191,6 +197,52 @@ def bode_sys(system, xlim=None, N=10000, xlog=True, mag_lim=None,
     return bode(freq, resp, xlim=xlim, xlog=xlog, mag_lim=mag_lim,
                 phase_lim=phase_lim, gain_point=gain_point,
                 figax=figax, rcParams=rcParams)
+
+
+def bode_syss(systems, xlim=None, N=10000, xlog=True, mag_lim=None,
+              phase_lim=None, gain_point=None, figax=None, rcParams=None):
+    """Make a nice bode plot for the given system.
+
+    Parameters
+    ----------
+    systems : an iterable containing instances of the LTI class or a tuple
+    describing the system. The following gives the number of elements
+    in the tuple and the interpretation:
+
+        * 2 (num, den)
+        * 3 (zeros, poles, gain)
+        * 4 (A, B, C, D)
+    xlim : tuple of (x_min, x_max), optional
+        Minimum and maximum values (x_min, x_max) of the plot's x-axis
+    N : int, optional
+        The number of points to calculate the system response at
+    xlog : bool, optional
+        Use a log (True) or linear (False) scale for the x-axis
+    mag_lim : tuple of (mag_min, mag_max, mag_delta), optional
+        A three element tuple containing the magnitude axis minimum, maximum
+        and tick spacing
+    phase_lim : tuple of (phase_min, phase_max, phase_delta), optional
+        A three element tuple containing the phase axis minimum, maximum
+        and tick spacing
+    gain_point : float, optional
+        If given, draws a vertical line on the bode plot at
+    figax : tuple of (fig, (ax1, ax2)), optional
+        The figure and axes to create the plot on, if given. If omitted, a new
+        figure and axes are created
+    rcParams : dictionary, optional
+        matplotlib rc settings dictionary"""
+    for i, system in enumerate(systems):
+        # Create the figure if none is given
+        if figax is None and i == 0:
+            figax = bode_sys(system, xlim=xlim, N=N, xlog=xlog, mag_lim=mag_lim,
+                             phase_lim=phase_lim, gain_point=gain_point,
+                             figax=figax, rcParams=rcParams)
+        else:
+            bode_sys(system, xlim=xlim, N=N, xlog=xlog, mag_lim=mag_lim,
+                     phase_lim=phase_lim, gain_point=gain_point,
+                     figax=figax, rcParams=rcParams)
+
+    return figax
 
 
 def bode_z(b, a=1, fs=1, xlim=None, N=1000, xlog=False, mag_lim=None,
