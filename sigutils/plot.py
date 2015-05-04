@@ -257,3 +257,48 @@ def bode_z(b, a=1, fs=1, xlim=None, N=1000, xlog=False, mag_lim=None,
     return bode(freq, resp, xlim=xlim, xlog=xlog, mag_lim=mag_lim,
                 phase_lim=phase_lim, gain_point=gain_point,
                 figax=figax, rcParams=rcParams)
+
+
+def bode_firs(bs, fs=1, xlim=None, N=1000, xlog=False, mag_lim=None,
+              phase_lim=None, gain_point=None, figax=None, rcParams=None):
+    for i, b in enumerate(bs):
+        if figax is None and i == 0:
+            figax = bode_z(b, a=1, fs=fs, xlim=xlim, N=N, xlog=xlog,
+                           mag_lim=mag_lim, phase_lim=phase_lim,
+                           gain_point=gain_point, figax=figax,
+                           rcParams=rcParams)
+        else:
+            bode_z(b, a=1, fs=fs, xlim=xlim, N=N, xlog=xlog,
+                   mag_lim=mag_lim, phase_lim=phase_lim,
+                   gain_point=gain_point, figax=figax,
+                   rcParams=rcParams)
+
+    return figax
+
+
+def bode_zz(systems, fs=1, xlim=None, N=1000, xlog=False, mag_lim=None,
+            phase_lim=None, gain_point=None, figax=None, rcParams=None):
+    """"""
+    for i, system in enumerate(systems):
+        b = system[0]
+        if len(system) == 1:
+            a = 1
+        elif len(system) == 2:
+            a = system[1]
+        else:
+            raise ValueError(
+                "Digital system ({0}) has more than two elements.".format(
+                    system))
+
+        if figax is None and i == 0:
+            figax = bode_z(b, a, fs=fs, xlim=xlim, N=N, xlog=xlog,
+                           mag_lim=mag_lim, phase_lim=phase_lim,
+                           gain_point=gain_point, figax=figax,
+                           rcParams=rcParams)
+        else:
+            bode_z(b, a, fs=fs, xlim=xlim, N=N, xlog=xlog,
+                   mag_lim=mag_lim, phase_lim=phase_lim,
+                   gain_point=gain_point, figax=figax,
+                   rcParams=rcParams)
+
+    return figax
