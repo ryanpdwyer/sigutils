@@ -8,6 +8,6 @@ At the command line via pip::
 
 Or install the latest GitHub version using::
 
-    $ git clone https://github.com/{ cookiecutter.github_username }}/sigutils.git
+    $ git clone https://github.com/ryanpdwyer/sigutils.git
     $ cd sigutils
     $ python setup.py install

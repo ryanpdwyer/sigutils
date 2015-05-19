@@ -247,6 +247,9 @@ def bode_syss(systems, xlim=None, N=10000, xlog=True, mag_lim=None,
 
 def bode_z(b, a=1, fs=1, xlim=None, N=1000, xlog=False, mag_lim=None,
            phase_lim=None, gain_point=None, figax=None, rcParams=None):
+    # Squeeze arrays to deal with cont2discrete array issues
+    b = np.squeeze(b)
+    a = np.squeeze(a)
     if xlim is None:
         w, resp = signal.freqz(b, a, N)
     else:
@@ -302,3 +305,18 @@ def bode_zz(systems, fs=1, xlim=None, N=1000, xlog=False, mag_lim=None,
                    rcParams=rcParams)
 
     return figax
+
+
+def bode_an_dig(analogs, digitals, fs, xlim=None, N=1000, xlog=False,
+               mag_lim=None, phase_lim=None, gain_point=None, figax=None,
+               rcParams=None):
+    """Plots analog and digital systems together on the same axes."""
+    figax = bode_syss(analogs, N=N, xlim=xlim, xlog=xlog, mag_lim=mag_lim,
+                      phase_lim=phase_lim, gain_point=gain_point,
+                      figax=figax, rcParams=rcParams)
+    bode_zz(digitals, fs=fs, xlim=xlim, xlog=xlog, mag_lim=mag_lim,
+                      phase_lim=phase_lim, gain_point=gain_point,
+                      figax=figax, rcParams=rcParams)
+    return figax
+
+
