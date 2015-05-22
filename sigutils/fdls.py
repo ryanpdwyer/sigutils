@@ -21,10 +21,10 @@ def butter_lp(f, f0):
     return 1/(1+f*1j/f0)
 
 # Let's approximate this with a 1st order top and bottom filter function
-def fdls(N, D, M):
-    k = np.arange(-N, 0.5)
+# def fdls(N, D, M):
+#     k = np.arange(-N, 0.5)
 
-    np.arange(-)
+    # np.arange()
 
 # A few lines on the frequency domain least squares algorithm
 # See http://dx.doi.org/10.1109/MSP.2007.273077

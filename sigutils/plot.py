@@ -19,6 +19,8 @@
 """
 from __future__ import division, print_function, absolute_import
 
+from collections import Counter
+
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
@@ -103,13 +105,16 @@ def bode(freq, resp, xlim=None, xlog=True, mag_lim=None, phase_lim=None,
 
     """
     mag, phase = mag_phase(resp, dB=True, degrees=True)
-    if rcParams is None:
-        rcParams = {'figure.figsize' : (8,6),
+
+    rcParamsDefault =   {'figure.figsize' : (8,6),
                          'lines.linewidth': 1.5,
                          'figure.dpi'     : 300,
                          'savefig.dpi'    : 300,
-                         'font.size'      : 16,}
-    with mpl.rc_context(rcParams):
+                         'axes.labelsize'      : 12,}
+    if rcParams is not None:
+        rcParamsDefault.update(rcParams)
+
+    with mpl.rc_context(rcParamsDefault):
         if figax is None:
             fig, (ax1, ax2) = plt.subplots(nrows=2)
         else:
@@ -253,10 +258,10 @@ def bode_z(b, a=1, fs=1, xlim=None, N=1000, xlog=False, mag_lim=None,
     if xlim is None:
         w, resp = signal.freqz(b, a, N)
     else:
-        w = np.pi * lin_or_logspace(xlim[0], xlim[1], N, xlog) / fs
+        w = 2 * np.pi * lin_or_logspace(xlim[0], xlim[1], N, xlog) / fs
         _, resp = signal.freqz(b, a, worN=w)
 
-    freq = w * fs / np.pi
+    freq = w * fs / (2 * np.pi)
     return bode(freq, resp, xlim=xlim, xlog=xlog, mag_lim=mag_lim,
                 phase_lim=phase_lim, gain_point=gain_point,
                 figax=figax, rcParams=rcParams)
@@ -320,3 +325,156 @@ def bode_an_dig(analogs, digitals, fs, xlim=None, N=1000, xlog=False,
     return figax
 
 
+def find_repeated_roots(x):
+    """"""
+    cnt = Counter()
+    x_iterable = list(x)
+    while x_iterable != []:
+        xi = x_iterable[0]
+        compared_equal = np.isclose(xi, x_iterable)
+        equal_indices = np.nonzero(compared_equal)[0]
+        for i in equal_indices[::-1]:
+            x_iterable.pop(i)
+
+        cnt[xi] = np.sum(compared_equal)
+
+    return {key: val for key, val in cnt.items() if val > 1}
+
+
+
+
+def test_find_repeated_roots():
+    x = np.array([1-1j, 1+1j, 1-1j])
+    out = {(1-1j): 2}
+    assert find_repeated_roots(x) == out
+
+
+def _x_per_inch(fig, ax):
+    xlim = ax.get_xlim()
+    return (xlim[1] - xlim[0]) / fig.get_figwidth()
+
+def _y_per_inch(fig, ax):
+    ylim = ax.get_ylim()
+    return (ylim[1] - ylim[0]) / fig.get_figheight()
+
+def _pole_zero(z, p, k, xlim=None, ylim=None, figax=None, rcParams=None):
+    z = np.atleast_1d(z)
+    p = np.atleast_1d(p)
+
+    rcParamsDefault =   {'figure.figsize' : (6,6),
+                         'lines.linewidth': 1.5,
+                         'figure.dpi'     : 300,
+                         'savefig.dpi'    : 300,
+                         'axes.labelsize'      : 12,}
+    if rcParams is not None:
+        rcParamsDefault.update(rcParams)
+
+    with mpl.rc_context(rcParamsDefault):
+        if figax is None:
+            fig, ax = plt.subplots()
+        else:
+            fig, ax = figax
+
+        markersize = mpl.rcParams['lines.markersize']
+        markeredgewidth = mpl.rcParams['lines.markeredgewidth']
+
+        zeros, = ax.plot(z.real, z.imag, linewidth=0, marker='o', markerfacecolor=None,)
+        poles, = ax.plot(p.real, p.imag, linewidth=0, color=zeros.get_color(), marker ='x', 
+                        markeredgewidth=3.5*markeredgewidth,
+                        markersize=markersize*1.5)
+
+        ax.set_xlim(-1.5, 1.5)
+        ax.set_ylim(-1.5, 1.5)
+        circ = plt.Circle((0, 0), radius=1, linewidth=1,
+                          fill=False, color='gray')
+        ax.axvline(0, color='k')
+        ax.axhline(0, color='k')
+        ax.add_patch(circ)
+        ax.grid()
+
+
+        x_per_inch = _x_per_inch(fig, ax)
+        y_per_inch = _y_per_inch(fig, ax)
+
+        c = 0.01388889
+        m_f = mpl.rcParams['font.size']
+        m_z = zeros.get_markersize()
+        m_inch_z = c * (m_z/2. + m_f/2.)
+        m_x_z = m_inch_z * x_per_inch
+        m_y_z = m_inch_z * y_per_inch
+
+        m_p = poles.get_markersize()
+        m_inch_p = c * (m_p/2. + m_f/2.)
+        m_x_p = m_inch_p * x_per_inch
+        m_y_p = m_inch_z * y_per_inch
+
+
+        rep_zeros = find_repeated_roots(z)
+        rep_poles = find_repeated_roots(p)
+
+        for pt, val in rep_zeros.items():
+            ax.text(pt.real + m_x_z, pt.imag + m_y_z, str(val))
+
+        for pt, val in rep_poles.items():
+            ax.text(pt.real + m_x_p, pt.imag + m_y_p, str(val))
+
+        return fig, ax
+
+
+def pole_zero(sys, xlim=None, ylim=None, figax=None, rcParams=None):
+    if len(sys) == 2:
+        z, p, k = signal.tf2zpk(*sys)
+    elif len(sys) == 3:
+        z, p, k = sys
+    elif len(sys) == 4:
+        z, p, k = signal.ss2zpk(*sys)
+    else:
+        ValueError("""\
+sys must have 2 (transfer function), 3 (zeros, poles, gain),
+or 4 (state space) elements. sys is: {}""".format(sys))
+
+    return _pole_zero(z, p, k, xlim=xlim, ylim=ylim, figax=figax,
+                      rcParams=rcParams)
+
+    
+
+def nyquist(freq, resp, freq_lim=None, xlim=None, ylim=None,
+            figax=None, rcParams=None):
+    if rcParams is None:
+        rcParams = {'figure.figsize' : (6,6),
+                         'lines.linewidth': 1.5,
+                         'figure.dpi'     : 300,
+                         'savefig.dpi'    : 300,
+                         'font.size'      : 12,}
+    with mpl.rc_context(rcParams):
+        if figax is None:
+            fig, ax = plt.subplots()
+        else:
+            fig, ax = figax
+
+        if freq_lim is not None:
+            resp = resp[np.logical_and(freq > freq_lim[0], freq < freq_lim[1])]
+        else:
+            resp = resp
+
+        ax.plot(resp.real, resp.imag, '-')
+        circ = plt.Circle((0, 0), radius=1, linewidth=1, fill=False,
+                          color='gray')
+        ax.axvline(0, color='0.5')
+        ax.axhline(0, color='0.5')
+        ax.add_patch(circ)
+        ax.grid()
+
+        if xlim is not None:
+            xlim = list(ax.get_xlim())
+            if xlim[0] > -1.1:
+                xlim[0] = -1.1
+
+            ax.set_xlim(xlim)
+        else:
+            ax.set_xlim(xlim)
+
+        if ylim is not None:
+            ax.set_ylim(ylim)
+
+    return fig, ax
