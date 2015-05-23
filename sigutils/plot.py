@@ -62,11 +62,39 @@ def adjust_y_ticks(ax, delta):
     ax.set_yticks(ax_new_ticks)
 
 
-def find_crossings(x, a):
+def find_crossings(x, a=0):
     """Return array indices where x - a changes sign.
 
     See http://stackoverflow.com/a/29674950/2823213"""
+    x = np.atleast_1d(x)
     return np.where(np.diff(np.signbit(x - a)))[0]
+
+
+def find_repeated_roots(x):
+    """"""
+    cnt = Counter()
+    x_iterable = list(x)
+    while x_iterable != []:
+        xi = x_iterable[0]
+        compared_equal = np.isclose(xi, x_iterable)
+        equal_indices = np.nonzero(compared_equal)[0]
+        for i in equal_indices[::-1]:
+            x_iterable.pop(i)
+
+        cnt[xi] = np.sum(compared_equal)
+
+    return {key: val for key, val in cnt.items() if val > 1}
+
+def _x_per_inch(ax):
+    """Conversion factor between the plot x variable and the figure width.
+
+    For example, """
+    xlim = ax.get_xlim()
+    return (xlim[1] - xlim[0]) / ax.get_figure().get_figwidth()
+
+def _y_per_inch(ax):
+    ylim = ax.get_ylim()
+    return (ylim[1] - ylim[0]) / ax.get_figure().get_figheight()
 
 
 # To do: should db=True be an option?
@@ -325,37 +353,10 @@ def bode_an_dig(analogs, digitals, fs, xlim=None, N=1000, xlog=False,
     return figax
 
 
-def find_repeated_roots(x):
-    """"""
-    cnt = Counter()
-    x_iterable = list(x)
-    while x_iterable != []:
-        xi = x_iterable[0]
-        compared_equal = np.isclose(xi, x_iterable)
-        equal_indices = np.nonzero(compared_equal)[0]
-        for i in equal_indices[::-1]:
-            x_iterable.pop(i)
+def _font_pt_to_inches(x):
+    """Convert points to inches (1 inch = 72 points)."""
+    return x / 72.
 
-        cnt[xi] = np.sum(compared_equal)
-
-    return {key: val for key, val in cnt.items() if val > 1}
-
-
-
-
-def test_find_repeated_roots():
-    x = np.array([1-1j, 1+1j, 1-1j])
-    out = {(1-1j): 2}
-    assert find_repeated_roots(x) == out
-
-
-def _x_per_inch(fig, ax):
-    xlim = ax.get_xlim()
-    return (xlim[1] - xlim[0]) / fig.get_figwidth()
-
-def _y_per_inch(fig, ax):
-    ylim = ax.get_ylim()
-    return (ylim[1] - ylim[0]) / fig.get_figheight()
 
 def _pole_zero(z, p, k, xlim=None, ylim=None, figax=None, rcParams=None):
     z = np.atleast_1d(z)
@@ -378,10 +379,11 @@ def _pole_zero(z, p, k, xlim=None, ylim=None, figax=None, rcParams=None):
         markersize = mpl.rcParams['lines.markersize']
         markeredgewidth = mpl.rcParams['lines.markeredgewidth']
 
-        zeros, = ax.plot(z.real, z.imag, linewidth=0, marker='o', markerfacecolor=None,)
-        poles, = ax.plot(p.real, p.imag, linewidth=0, color=zeros.get_color(), marker ='x', 
-                        markeredgewidth=3.5*markeredgewidth,
-                        markersize=markersize*1.5)
+        zeros, = ax.plot(z.real, z.imag, linewidth=0, marker='o',
+                         markerfacecolor=None,)
+        poles, = ax.plot(p.real, p.imag, linewidth=0, color=zeros.get_color(),
+                         marker ='x', markeredgewidth=3.5*markeredgewidth,
+                         markersize=markersize*1.5)
 
         ax.set_xlim(-1.5, 1.5)
         ax.set_ylim(-1.5, 1.5)
@@ -392,19 +394,19 @@ def _pole_zero(z, p, k, xlim=None, ylim=None, figax=None, rcParams=None):
         ax.add_patch(circ)
         ax.grid()
 
-
-        x_per_inch = _x_per_inch(fig, ax)
-        y_per_inch = _y_per_inch(fig, ax)
-
-        c = 0.01388889
+        x_per_inch = _x_per_inch(ax)
+        y_per_inch = _y_per_inch(ax)
+        
         m_f = mpl.rcParams['font.size']
         m_z = zeros.get_markersize()
-        m_inch_z = c * (m_z/2. + m_f/2.)
+
+        m_inch_z = _font_pt_to_inches(m_z/2. + m_f/2.)
+
         m_x_z = m_inch_z * x_per_inch
         m_y_z = m_inch_z * y_per_inch
 
         m_p = poles.get_markersize()
-        m_inch_p = c * (m_p/2. + m_f/2.)
+        m_inch_p = _font_pt_to_inches(m_p/2. + m_f/2.)
         m_x_p = m_inch_p * x_per_inch
         m_y_p = m_inch_z * y_per_inch
 
@@ -436,7 +438,6 @@ or 4 (state space) elements. sys is: {}""".format(sys))
     return _pole_zero(z, p, k, xlim=xlim, ylim=ylim, figax=figax,
                       rcParams=rcParams)
 
-    
 
 def nyquist(freq, resp, freq_lim=None, xlim=None, ylim=None,
             figax=None, rcParams=None):

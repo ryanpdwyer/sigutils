@@ -4,7 +4,8 @@ import unittest
 
 import numpy as np
 from numpy.testing import assert_allclose
-from sigutils.plot import (mag_phase, bode, lin_or_logspace)
+from sigutils.plot import (mag_phase, bode, lin_or_logspace, find_crossings,
+                           find_repeated_roots)
 
 
 def test_mag_phase():
@@ -15,15 +16,45 @@ def test_mag_phase():
     assert_allclose(mag, exp_mag, atol=1e-12)
     assert_allclose(phase, exp_phase, atol=1e-12)
 
+
 def test_lin_or_logspace():
-    x_min = 1
-    x_max = 10
-    n = 10
-    exp = np.arange(1, 11)
-    assert_allclose(exp, lin_or_logspace(x_min, x_max, n, False))
+               # exp,            (x_min, x_max, n, log)
+    to_test = (
+               (np.arange(1,11),     (1, 10,  10, False)),
+               (10**np.arange(0, 4), (1, 1000, 4, True))
+               )
+
+    for exp, args in to_test:
+        assert_allclose(exp, lin_or_logspace(*args))
 
 
-class Test_bode(unittest.TestCase):
+def test_find_crossings():
+    to_test = (
+                ([0, 1, 3, 4], [1, -1, 1, 0.1, -0.1, 1, 10]),
+              )
+
+    for exp, x in to_test:
+        assert_allclose(exp, find_crossings(x))
+
+
+def test_find_repeated_roots():
+    x = np.array([1-1j, 1+1j, 1-1j])
+    out = {(1-1j): 2}
+    assert find_repeated_roots(x) == out
+
+
+# def test_x_per_inch():
+#     assert False
+
+
+# def test_y_per_inch():
+#     assert False
+
+
+class Test_bode_related_plots(unittest.TestCase):
+    """These plotting classes are hard to test.
+       Let's start with just calling each of the plotting functions with a
+       typical signature to verify that there are no weird typos or errors."""
     def setUp(self):
         self.freq = np.logspace(0, 4, 51)
         self.resp = 1/(1 + 1j * self.freq / 100)
