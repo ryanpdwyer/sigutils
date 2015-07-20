@@ -24,3 +24,14 @@ def log_bins(x, y, r=1.5):
     x_out = np.array(x_out)
     y_out = np.array(y_out)
     return x_out, y_out
+
+# def log_bins():
+#     """Average data over logrithmically spaced intervals of fractional size r. nice for plotting
+#     data on log-log plots. r controlls """
+#     if r <= 1:
+#         raise ValueError('r ({}) must be greater than 1.'.format(r))
+
+#     x_log = np.array(np.round(np.log(x) / np.log(r), 0), dtype='int64')
+
+    
+    
