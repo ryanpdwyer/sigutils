@@ -184,6 +184,22 @@ def bode(freq, resp, xlim=None, xlog=True, mag_lim=None, phase_lim=None,
         return fig, (ax1, ax2)
 
 
+def freqresp(system, xlim=None, N=10000, xlog=True):
+    """Frequency response, possibly over a log range, of a continuous time system."""
+    if xlim is None:
+        w, resp = signal.freqresp(system, n=N)
+        # Recalculate the data points over a linear interval if requested
+        if not xlog:
+            w = np.linspace(w.min(), w.max(), N)
+            _ , resp = signal.freqresp(system, w)
+    else:
+        w = 2 * np.pi * lin_or_logspace(xlim[0], xlim[1], N, xlog)
+        _ , resp = signal.freqresp(system, w)
+
+    freq = w / (2 * np.pi)
+    return freq, resp
+
+
 def bode_sys(system, xlim=None, N=10000, xlog=True, mag_lim=None,
              phase_lim=None, gain_point=None, figax=None, rcParams=None):
     """Make a nice bode plot for the given system.
@@ -216,17 +232,8 @@ def bode_sys(system, xlim=None, N=10000, xlog=True, mag_lim=None,
         figure and axes are created
     rcParams : dictionary, optional
         matplotlib rc settings dictionary"""
-    if xlim is None:
-        w, resp = signal.freqresp(system, n=N)
-        # Recalculate the data points over a linear interval if requested
-        if not xlog:
-            w = np.linspace(w.min(), w.max(), N)
-            _ , resp = signal.freqresp(system, w)
-    else:
-        w = 2 * np.pi * lin_or_logspace(xlim[0], xlim[1], N, xlog)
-        _ , resp = signal.freqresp(system, w)
+    freq, resp = freqresp(system, xlim=xlim, N=N, xlog=xlog)
 
-    freq = w / (2 * np.pi)
     return bode(freq, resp, xlim=xlim, xlog=xlog, mag_lim=mag_lim,
                 phase_lim=phase_lim, gain_point=gain_point,
                 figax=figax, rcParams=rcParams)
@@ -278,8 +285,27 @@ def bode_syss(systems, xlim=None, N=10000, xlog=True, mag_lim=None,
     return figax
 
 
-def bode_z(b, a=1, fs=1, xlim=None, N=1000, xlog=False, mag_lim=None,
-           phase_lim=None, gain_point=None, figax=None, rcParams=None):
+def freqz(b, a=1, fs=1, xlim=None, N=1000, xlog=False):
+    """Calculate the frequency response of a discrete time system over the
+    range xlim, over a log or linear interval.
+
+    Parameters
+    ----------
+
+    b : array-like
+        Numerator coefficients of discrete time system
+    a : array-like, optional
+        Denominator coefficients of discrete time system
+    fs : float, optional
+        Sampling frequency; use to scale the output frequency array
+    xlim : tuple of (x_min, x_max), optional
+        Calculate the response from x_min to x_max. If omitted, the entire
+        digital frequency axis is used
+    N : int, optional
+        The number of points to calculate the system response at
+    xlog : bool, optional
+        Calculate the frequency response at a log (True) or linearly spaced
+        set of points"""
     # Squeeze arrays to deal with cont2discrete array issues
     b = np.squeeze(b)
     a = np.squeeze(a)
@@ -290,6 +316,17 @@ def bode_z(b, a=1, fs=1, xlim=None, N=1000, xlog=False, mag_lim=None,
         _, resp = signal.freqz(b, a, worN=w)
 
     freq = w * fs / (2 * np.pi)
+    return freq, resp
+
+
+def bode_z(b, a=1, fs=1, xlim=None, N=1000, xlog=False, mag_lim=None,
+           phase_lim=None, gain_point=None, figax=None, rcParams=None):
+    """Make a nice bode plot for a discrete time system.
+
+    Parameters
+    ----------"""
+    freq, resp = freqz(b=b, a=a, fs=fs, xlim=xlim, N=N, xlog=xlog)
+
     return bode(freq, resp, xlim=xlim, xlog=xlog, mag_lim=mag_lim,
                 phase_lim=phase_lim, gain_point=gain_point,
                 figax=figax, rcParams=rcParams)
