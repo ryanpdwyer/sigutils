@@ -26,28 +26,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy import signal
 
-def mag_phase(z, dB=True, degrees=True):
-    mag = np.abs(z)
-    phase = np.unwrap(np.angle(z))
-    if dB:
-        mag = 20 * np.log10(mag)
-    if degrees:
-        phase = phase * 180 / np.pi
+from sigutils._util import (freqresp, freqz, lin_or_logspace, mag_phase)
 
-    return mag, phase
-
-
-def lin_or_logspace(x_min, x_max, N, log):
-    """Return a log or linearly spaced interval"""
-    if log:
-        if x_min <= 0 or x_max <= 0:
-            raise ValueError(
-                "x_min ({0}) and x_max ({1}) must be greater than 0.".format(
-                    x_min, x_max))
-        else:
-            return np.logspace(np.log10(x_min), np.log10(x_max), N)
-    else:
-        return np.linspace(x_min, x_max, N)
 
 
 def adjust_y_ticks(ax, delta):
@@ -85,12 +65,14 @@ def find_repeated_roots(x):
 
     return {key: val for key, val in cnt.items() if val > 1}
 
+
 def _x_per_inch(ax):
     """Conversion factor between the plot x variable and the figure width.
 
     For example, """
     xlim = ax.get_xlim()
     return (xlim[1] - xlim[0]) / ax.get_figure().get_figwidth()
+
 
 def _y_per_inch(ax):
     ylim = ax.get_ylim()
@@ -139,6 +121,7 @@ def bode(freq, resp, xlim=None, xlog=True, mag_lim=None, phase_lim=None,
                          'figure.dpi'     : 300,
                          'savefig.dpi'    : 300,
                          'axes.labelsize'      : 12,}
+
     if rcParams is not None:
         rcParamsDefault.update(rcParams)
 
@@ -184,22 +167,6 @@ def bode(freq, resp, xlim=None, xlog=True, mag_lim=None, phase_lim=None,
         return fig, (ax1, ax2)
 
 
-def freqresp(system, xlim=None, N=10000, xlog=True):
-    """Frequency response, possibly over a log range, of a continuous time system."""
-    if xlim is None:
-        w, resp = signal.freqresp(system, n=N)
-        # Recalculate the data points over a linear interval if requested
-        if not xlog:
-            w = np.linspace(w.min(), w.max(), N)
-            _ , resp = signal.freqresp(system, w)
-    else:
-        w = 2 * np.pi * lin_or_logspace(xlim[0], xlim[1], N, xlog)
-        _ , resp = signal.freqresp(system, w)
-
-    freq = w / (2 * np.pi)
-    return freq, resp
-
-
 def bode_sys(system, xlim=None, N=10000, xlog=True, mag_lim=None,
              phase_lim=None, gain_point=None, figax=None, rcParams=None):
     """Make a nice bode plot for the given system.
@@ -226,7 +193,7 @@ def bode_sys(system, xlim=None, N=10000, xlog=True, mag_lim=None,
         A three element tuple containing the phase axis minimum, maximum
         and tick spacing
     gain_point : float, optional
-        If given, draws a vertical line on the bode plot at 
+        If given, draws a vertical line on the bode plot at this point
     figax : tuple of (fig, (ax1, ax2)), optional
         The figure and axes to create the plot on, if given. If omitted, a new
         figure and axes are created
@@ -265,7 +232,7 @@ def bode_syss(systems, xlim=None, N=10000, xlog=True, mag_lim=None,
         A three element tuple containing the phase axis minimum, maximum
         and tick spacing
     gain_point : float, optional
-        If given, draws a vertical line on the bode plot at
+        If given, draws a vertical line on the bode plot at this point
     figax : tuple of (fig, (ax1, ax2)), optional
         The figure and axes to create the plot on, if given. If omitted, a new
         figure and axes are created
@@ -283,40 +250,6 @@ def bode_syss(systems, xlim=None, N=10000, xlog=True, mag_lim=None,
                      figax=figax, rcParams=rcParams)
 
     return figax
-
-
-def freqz(b, a=1, fs=1, xlim=None, N=1000, xlog=False):
-    """Calculate the frequency response of a discrete time system over the
-    range xlim, over a log or linear interval.
-
-    Parameters
-    ----------
-
-    b : array-like
-        Numerator coefficients of discrete time system
-    a : array-like, optional
-        Denominator coefficients of discrete time system
-    fs : float, optional
-        Sampling frequency; use to scale the output frequency array
-    xlim : tuple of (x_min, x_max), optional
-        Calculate the response from x_min to x_max. If omitted, the entire
-        digital frequency axis is used
-    N : int, optional
-        The number of points to calculate the system response at
-    xlog : bool, optional
-        Calculate the frequency response at a log (True) or linearly spaced
-        set of points"""
-    # Squeeze arrays to deal with cont2discrete array issues
-    b = np.squeeze(b)
-    a = np.squeeze(a)
-    if xlim is None:
-        w, resp = signal.freqz(b, a, N)
-    else:
-        w = 2 * np.pi * lin_or_logspace(xlim[0], xlim[1], N, xlog) / fs
-        _, resp = signal.freqz(b, a, worN=w)
-
-    freq = w * fs / (2 * np.pi)
-    return freq, resp
 
 
 def bode_z(b, a=1, fs=1, xlim=None, N=1000, xlog=False, mag_lim=None,
@@ -433,7 +366,7 @@ def _pole_zero(z, p, k, xlim=None, ylim=None, figax=None, rcParams=None):
 
         x_per_inch = _x_per_inch(ax)
         y_per_inch = _y_per_inch(ax)
-        
+
         m_f = mpl.rcParams['font.size']
         m_z = zeros.get_markersize()
 
@@ -446,7 +379,6 @@ def _pole_zero(z, p, k, xlim=None, ylim=None, figax=None, rcParams=None):
         m_inch_p = _font_pt_to_inches(m_p/2. + m_f/2.)
         m_x_p = m_inch_p * x_per_inch
         m_y_p = m_inch_z * y_per_inch
-
 
         rep_zeros = find_repeated_roots(z)
         rep_poles = find_repeated_roots(p)
@@ -479,11 +411,12 @@ or 4 (state space) elements. sys is: {}""".format(sys))
 def nyquist(freq, resp, freq_lim=None, xlim=None, ylim=None,
             figax=None, rcParams=None):
     if rcParams is None:
-        rcParams = {'figure.figsize' : (6,6),
-                         'lines.linewidth': 1.5,
-                         'figure.dpi'     : 300,
-                         'savefig.dpi'    : 300,
-                         'font.size'      : 12,}
+        rcParams = {'figure.figsize': (6, 6),
+                    'lines.linewidth': 1.5,
+                    'figure.dpi': 300,
+                    'savefig.dpi': 300,
+                    'font.size': 12}
+
     with mpl.rc_context(rcParams):
         if figax is None:
             fig, ax = plt.subplots()

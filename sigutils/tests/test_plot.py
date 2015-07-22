@@ -4,28 +4,8 @@ import unittest
 
 import numpy as np
 from numpy.testing import assert_allclose
-from sigutils.plot import (mag_phase, bode, lin_or_logspace, find_crossings,
+from sigutils.plot import (bode, find_crossings,
                            find_repeated_roots)
-
-
-def test_mag_phase():
-    z = np.array([1+0j, (1-1j)/np.sqrt(2), -1j])
-    exp_phase = np.array([0, -45, -90])
-    exp_mag = np.array([0, 0, 0])
-    mag, phase = mag_phase(z, dB=True, degrees=True)
-    assert_allclose(mag, exp_mag, atol=1e-12)
-    assert_allclose(phase, exp_phase, atol=1e-12)
-
-
-def test_lin_or_logspace():
-               # exp,            (x_min, x_max, n, log)
-    to_test = (
-               (np.arange(1,11),     (1, 10,  10, False)),
-               (10**np.arange(0, 4), (1, 1000, 4, True))
-               )
-
-    for exp, args in to_test:
-        assert_allclose(exp, lin_or_logspace(*args))
 
 
 def test_find_crossings():
