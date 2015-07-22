@@ -5,30 +5,29 @@ import pandas as pd
 
 
 def log_bins(x, y, r=1.5):
-    """Average data over logrithmically spaced intervals of fractional size r. nice for plotting
-    data on log-log plots. r controlls """
+    """Average data over logrithmically spaced intervals of fractional size r.
+    Nice for plotting data on log-log plots."""
     if r <= 1:
         raise ValueError('r ({}) must be greater than 1.'.format(r))
 
-    i = 0
-    x_out = []
-    y_out = []
-    while x[i] == 0:
-        i += 1
+    df = pd.DataFrame({'x': x, 'y': y})
 
-    while i < x.size:
-        x0 = x[i] # Create mask from x0 to 2 x0
-        mask = np.logical_and(x >= x0, x < r*x0)
-        x_out.append(x[mask].mean())
-        y_out.append(y[mask].mean())
-        i = np.max(mask.nonzero()) + 1  # Reset the index
+    log_mask = df.x > 0
 
-    x_out = np.array(x_out)
-    y_out = np.array(y_out)
-    return x_out, y_out
+    x0 = df[log_mask].x.min()
+    df['bins'] = (np.log(df.x) - np.log(x0)) // np.log(r)
+
+    xy = df[log_mask].groupby('bins').mean()
+
+    return xy.x.values, xy.y.values
 
 
-def lin_bins(x, y, n=None, dx=None):
+def lin_bins(x, y, dx=None, n=None):
+    """Average data over linearly spaced intervals, specified in
+    x units (dx) or numper of points to average together (n).
+
+    Helpful for averaging noisy data for clearer plotting.
+    """
 
     df = pd.DataFrame({'x': x, 'y': y})
     if n is None and dx is None:
