@@ -1,5 +1,13 @@
 # Todo
 
+## For Release
+
+- [ ] Test all utility functions
+- [ ] Check readthedocs documentation
+- [ ] Include link to ipython notebook example in documentation
+- [ ] Write a real readme
+- [ ] Relegate FDLS to its own orphaned branch for now?
+
 ## Testing
 
 - [ ] Test plot utility functions

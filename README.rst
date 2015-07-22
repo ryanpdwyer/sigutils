@@ -6,7 +6,7 @@ sigutils
     :target: https://travis-ci.org/ryanpdwyer/sigutils
 
 
-"A set of utility functions for signal processing."
+A set of utility functions for signal processing.
 
 
 Features
