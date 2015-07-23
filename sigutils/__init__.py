@@ -5,7 +5,7 @@ sigutils
 ============================
 """
 
-from sigutils.plot import (bode, bode_sys, bode_syss,
+from sigutils.plot import (bode, bodes, bode_sys, bode_syss,
                            bode_z, bode_firs, bode_zz,
                            bode_an_dig, nyquist, pole_zero)
 

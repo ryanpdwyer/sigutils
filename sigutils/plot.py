@@ -167,6 +167,16 @@ def bode(freq, resp, xlim=None, xlog=True, mag_lim=None, phase_lim=None,
         return fig, (ax1, ax2)
 
 
+def bodes(freq, resp,  xlim=None, xlog=True, mag_lim=None, phase_lim=None,
+          gain_point=None, figax=None, rcParams=None):
+    for f, r in zip(freq, resp):
+        figax = bode(f, r, xlim=xlim, xlog=xlog, mag_lim=mag_lim,
+                     phase_lim=phase_lim, gain_point=gain_point,
+                     figax=figax, rcParams=rcParams)
+
+    return figax
+
+
 def bode_sys(system, xlim=None, N=10000, xlog=True, mag_lim=None,
              phase_lim=None, gain_point=None, figax=None, rcParams=None):
     """Make a nice bode plot for the given system.

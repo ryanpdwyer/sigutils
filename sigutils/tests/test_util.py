@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 from numpy.testing import assert_array_almost_equal, assert_allclose
-from sigutils._util import log_bins, lin_bins, mag_phase, lin_or_logspace
+from sigutils._util import log_bins, lin_bins, mag_phase, lin_or_logspace, freqz
 
 
 def test_log_bins():
@@ -42,3 +42,7 @@ def test_lin_or_logspace():
 
     for exp, args in to_test:
         assert_allclose(exp, lin_or_logspace(*args))
+
+def test_freqz():
+    b = [1]
+    freqz(b, N=10)

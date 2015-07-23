@@ -112,7 +112,9 @@ def freqz(b, a=1, fs=1, xlim=None, N=1000, xlog=False):
     b = np.squeeze(b)
     a = np.squeeze(a)
     if xlim is None:
-        w, resp = signal.freqz(b, a, N)
+        w, resp = signal.freqz(b, a)
+        w = lin_or_logspace(w[w > 0][0], w[-1], N, True)
+        _, resp = signal.freqz(b, a, w)
     else:
         w = 2 * np.pi * lin_or_logspace(xlim[0], xlim[1], N, xlog) / fs
         _, resp = signal.freqz(b, a, worN=w)
