@@ -26,20 +26,34 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy import signal
 
-from sigutils._util import (freqresp, freqz, lin_or_logspace, mag_phase)
-
+from sigutils._util import (freqresp, freqz, mag_phase)
 
 
 def adjust_y_ticks(ax, delta):
     """Adjust the y-axis tick marks on ax to the spacing delta."""
     ylim = np.array(ax.get_ylim()) / delta
-    ymin = ylim[0]//1  # Round towards - infinity
-    ymax = -(-ylim[1]//1)  # Trick to round towards + infinity
+    ymin = ylim[0] // 1  # Round towards - infinity
+    ymax = -(-ylim[1] // 1)  # Trick to round towards + infinity
     # Note: this rounds away from zero so we never make the axis limits smaller
     ax_new_lim = np.array([ymin, ymax]) * delta
-    ax_new_ticks = np.arange(ax_new_lim[0], ax_new_lim[1]+1, delta)
+    ax_new_ticks = np.arange(ax_new_lim[0], ax_new_lim[1] + 1, delta)
     ax.set_ybound(*ax_new_lim)
     ax.set_yticks(ax_new_ticks)
+
+
+def adjust_ylim_ticks(ax, ylim):
+    if ylim is not None:
+        ax.set_ylim(ylim[0], ylim[1])
+        if len(ylim) == 3:
+            adjust_y_ticks(ax, ylim[2])
+
+
+# def adjust_x_ticks(ax, delta):
+#     xlim = np.array(ax.get_xlim()) / delta
+#     xmin = xlim[0] // 1
+#     xmax = -(-xlim[1] // 1)
+#     ax_new_ticks = np.arange(xmin, xmax + delta*0.5, delta)
+#     ax_new_ticks[]
 
 
 def find_crossings(x, a=0):
@@ -79,6 +93,143 @@ def _y_per_inch(ax):
     return (ylim[1] - ylim[0]) / ax.get_figure().get_figheight()
 
 
+def _font_pt_to_inches(x):
+    """Convert points to inches (1 inch = 72 points)."""
+    return x / 72.
+
+
+def magtime(freq, resp, t, impulse, freq_lim=None, freq_log=False, dB=True,
+            mag_lim=None, step=False, stem=False, figax=None, rcParams={}):
+    """"""
+    mag, _ = mag_phase(resp, dB=dB)
+
+    rcParamsDefault =   {'figure.figsize' : (8,6),
+                         'lines.linewidth': 1.5,
+                         'figure.dpi'     : 300,
+                         'savefig.dpi'    : 300,
+                         'axes.labelsize' : 12,}
+    rcParamsDefault.update(rcParams)
+
+    if figax is None:
+        with mpl.rc_context(rcParamsDefault):
+            fig, (ax1, ax2) = plt.subplots(nrows=2)
+    else:
+        fig, (ax1, ax2) = figax
+
+    ax1.yaxis.grid(True, linestyle='-', color='.8', zorder=0)
+
+    if freq_log:
+        ax1.semilogx(freq, mag)
+    else:
+        ax1.plot(freq, mag)
+
+    if dB:
+        ax1.set_ylabel('Magnitude [dB]')
+    else:
+        ax1.set_ylabel('Magnitude')
+
+    ax1.set_xlim(freq[0], freq[-1])
+
+    if step:
+        y = np.cumsum(impulse)
+        h_lines = [0, 1]
+    else:
+        y = impulse
+        h_lines = [0]
+
+    if stem:
+        ax2.stem(t, y, linestyle='-', markerfmt='.', basefmt='k-')
+    else:
+        ax2.plot(t, y)
+
+    ax2.set_xlim(t.min(), t.max())
+    ax2.hlines(h_lines, t.min(), t.max(), color='0.8', zorder=0)
+    ax2.set_xlabel("Time / Samples")
+
+    return fig, (ax1, ax2)
+
+
+def iir_impulse(b, a, N=1000, prob=0.005):
+    freq, resp = freqz(b, a, fs=1, xlim=None, N=N, xlog=False)
+    bandwidth = np.sum(np.abs(resp)) * (freq[1] - freq[0])
+
+    n = int(1/(6*bandwidth))
+    difference = 1
+    i1 = 0
+
+    while difference >= prob:
+        impulse = i1
+        n *= 1.5
+        x = np.zeros(2*n+1)
+        x[0] = 1
+        i1 = signal.lfilter(b, a, x)
+        difference = 1 - np.sum(abs(impulse)) / np.sum(abs(i1))
+
+    return impulse
+
+
+def impulse_z(b, a, fs=1, N=1000, prob=0.005):
+    a = np.atleast_1d(a)
+
+    if a.size == 1:
+        impulse = b/a
+    else:
+        impulse = iir_impulse(b, a, N=N, prob=prob)
+
+    t = np.arange(impulse.size) / fs
+
+    return t, impulse
+
+
+def magtime_z(b, a=1, fs=1, freq_lim=None, N=1000, freq_log=False, dB=True,
+              mag_lim=None, prob=0.005, step=False, centered=False, stem=False,
+              figax=None, rcParams={}):
+    """Overall, I want a function which plots the magnitude response
+    and the time domain response. freq, mag, t, output."""
+    freq, resp = freqz(b, a, fs=fs, xlim=freq_lim, N=N, xlog=freq_log)
+    t, impulse = impulse_z(b, a, fs, N=N, prob=prob)
+
+    figax = magtime(freq, resp, t, impulse, freq_lim=freq_lim,
+                    freq_log=freq_log, dB=dB, mag_lim=mag_lim, step=step,
+                    stem=stem, figax=figax, rcParams=rcParams)
+
+    return figax
+
+
+def magtime_firs(bs, fs=1, freq_lim=None, N=1000, freq_log=False, dB=True,
+                 mag_lim=None, prob=0.005, step=False, centered=False,
+                 stem=False, figax=None, rcParams={}):
+    for b in bs:
+        figax = magtime_z(b, a=1, freq_lim=freq_lim, N=N, freq_log=freq_log,
+                          dB=dB, mag_lim=mag_lim, prob=prob, step=step,
+                          centered=centered, stem=stem, figax=figax,
+                          rcParams=rcParams)
+
+    return figax
+
+
+def magtime_zz(systems, fs=1, freq_lim=None, N=1000, freq_log=False, dB=True,
+               mag_lim=None, prob=0.005, step=False, centered=False,
+               stem=False, figax=None, rcParams={}):
+    for system in systems:
+        b = system[0]
+        if len(system) == 1:
+            a = 1
+        elif len(system) == 2:
+            a = system[1]
+        else:
+            raise ValueError(
+                "Digital system ({0}) has more than two elements.".format(
+                    system))
+
+        figax = magtime_z(b, a, freq_lim=freq_lim, N=N, freq_log=freq_log,
+                          dB=dB, mag_lim=mag_lim, prob=prob, step=step,
+                          centered=centered, stem=stem, figax=figax,
+                          rcParams=rcParams)
+
+    return figax
+
+
 # To do: should db=True be an option?
 def bode(freq, resp, xlim=None, xlog=True, mag_lim=None, phase_lim=None,
          gain_point=None, figax=None, rcParams=None):
@@ -101,7 +252,8 @@ def bode(freq, resp, xlim=None, xlog=True, mag_lim=None, phase_lim=None,
         A three element tuple containing the phase axis minimum, maximum
         and tick spacing
     gain_point : float, optional
-        If given, draws a vertical line on the bode plot at 
+        If given, draws a vertical line on the bode plot when the gain crosses
+        this point.
     figax : tuple of (fig, (ax1, ax2)), optional
         The figure and axes to create the plot on, if given. If omitted, a new
         figure and axes are created
@@ -120,7 +272,7 @@ def bode(freq, resp, xlim=None, xlog=True, mag_lim=None, phase_lim=None,
                          'lines.linewidth': 1.5,
                          'figure.dpi'     : 300,
                          'savefig.dpi'    : 300,
-                         'axes.labelsize'      : 12,}
+                         'axes.labelsize' : 12,}
 
     if rcParams is not None:
         rcParamsDefault.update(rcParams)
@@ -146,15 +298,11 @@ def bode(freq, resp, xlim=None, xlog=True, mag_lim=None, phase_lim=None,
             ax1.set_xlim(*xlim)
             ax2.set_xlim(*xlim)
 
-        if mag_lim is not None:
-            ax1.set_ylim(mag_lim[0], mag_lim[1])
-            adjust_y_ticks(ax1, mag_lim[2])
-
-        if phase_lim is not None:
-            ax2.set_ylim(phase_lim[0], phase_lim[1])
-            adjust_y_ticks(ax2, phase_lim[2])
+        adjust_ylim_ticks(ax1, mag_lim)
+        adjust_ylim_ticks(ax2, phase_lim)
 
         if gain_point is not None:
+            # Would be nice to switch this for high-pass applications
             gain_index = find_crossings(mag, gain_point)
             for i in gain_index:
                 ax1.axvline(x=freq[i], color='k',  linestyle='--')
@@ -248,17 +396,10 @@ def bode_syss(systems, xlim=None, N=10000, xlog=True, mag_lim=None,
         figure and axes are created
     rcParams : dictionary, optional
         matplotlib rc settings dictionary"""
-    for i, system in enumerate(systems):
-        # Create the figure if none is given
-        if figax is None and i == 0:
-            figax = bode_sys(system, xlim=xlim, N=N, xlog=xlog, mag_lim=mag_lim,
-                             phase_lim=phase_lim, gain_point=gain_point,
-                             figax=figax, rcParams=rcParams)
-        else:
-            bode_sys(system, xlim=xlim, N=N, xlog=xlog, mag_lim=mag_lim,
-                     phase_lim=phase_lim, gain_point=gain_point,
-                     figax=figax, rcParams=rcParams)
-
+    for system in systems:
+        figax = bode_sys(system, xlim=xlim, N=N, xlog=xlog, mag_lim=mag_lim,
+                         phase_lim=phase_lim, gain_point=gain_point,
+                         figax=figax, rcParams=rcParams)
     return figax
 
 
@@ -277,25 +418,18 @@ def bode_z(b, a=1, fs=1, xlim=None, N=1000, xlog=False, mag_lim=None,
 
 def bode_firs(bs, fs=1, xlim=None, N=1000, xlog=False, mag_lim=None,
               phase_lim=None, gain_point=None, figax=None, rcParams=None):
-    for i, b in enumerate(bs):
-        if figax is None and i == 0:
-            figax = bode_z(b, a=1, fs=fs, xlim=xlim, N=N, xlog=xlog,
-                           mag_lim=mag_lim, phase_lim=phase_lim,
-                           gain_point=gain_point, figax=figax,
-                           rcParams=rcParams)
-        else:
-            bode_z(b, a=1, fs=fs, xlim=xlim, N=N, xlog=xlog,
-                   mag_lim=mag_lim, phase_lim=phase_lim,
-                   gain_point=gain_point, figax=figax,
-                   rcParams=rcParams)
-
+    for b in bs:
+        figax = bode_z(b, a=1, fs=fs, xlim=xlim, N=N, xlog=xlog,
+                       mag_lim=mag_lim, phase_lim=phase_lim,
+                       gain_point=gain_point, figax=figax,
+                       rcParams=rcParams)
     return figax
 
 
 def bode_zz(systems, fs=1, xlim=None, N=1000, xlog=False, mag_lim=None,
             phase_lim=None, gain_point=None, figax=None, rcParams=None):
     """"""
-    for i, system in enumerate(systems):
+    for system in systems:
         b = system[0]
         if len(system) == 1:
             a = 1
@@ -306,36 +440,28 @@ def bode_zz(systems, fs=1, xlim=None, N=1000, xlog=False, mag_lim=None,
                 "Digital system ({0}) has more than two elements.".format(
                     system))
 
-        if figax is None and i == 0:
-            figax = bode_z(b, a, fs=fs, xlim=xlim, N=N, xlog=xlog,
-                           mag_lim=mag_lim, phase_lim=phase_lim,
-                           gain_point=gain_point, figax=figax,
-                           rcParams=rcParams)
-        else:
-            bode_z(b, a, fs=fs, xlim=xlim, N=N, xlog=xlog,
-                   mag_lim=mag_lim, phase_lim=phase_lim,
-                   gain_point=gain_point, figax=figax,
-                   rcParams=rcParams)
+        figax = bode_z(b, a, fs=fs, xlim=xlim, N=N, xlog=xlog,
+                       mag_lim=mag_lim, phase_lim=phase_lim,
+                       gain_point=gain_point, figax=figax,
+                       rcParams=rcParams)
 
     return figax
 
 
 def bode_an_dig(analogs, digitals, fs, xlim=None, N=1000, xlog=False,
-               mag_lim=None, phase_lim=None, gain_point=None, figax=None,
-               rcParams=None):
+                mag_lim=None, phase_lim=None, gain_point=None, figax=None,
+                rcParams=None):
     """Plots analog and digital systems together on the same axes."""
+
     figax = bode_syss(analogs, N=N, xlim=xlim, xlog=xlog, mag_lim=mag_lim,
                       phase_lim=phase_lim, gain_point=gain_point,
                       figax=figax, rcParams=rcParams)
+
     bode_zz(digitals, fs=fs, xlim=xlim, xlog=xlog, mag_lim=mag_lim,
-                      phase_lim=phase_lim, gain_point=gain_point,
-                      figax=figax, rcParams=rcParams)
+            phase_lim=phase_lim, gain_point=gain_point,
+            figax=figax, rcParams=rcParams)
+
     return figax
-
-
-def _font_pt_to_inches(x):
-    """Convert points to inches (1 inch = 72 points)."""
-    return x / 72.
 
 
 def _pole_zero(z, p, k, xlim=None, ylim=None, figax=None, rcParams=None):
