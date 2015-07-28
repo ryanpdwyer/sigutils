@@ -108,7 +108,7 @@ def git_describe():
 
 def version():
     result = check_output(['python', 'setup.py', '--version'])
-    return result.stdout
+    return result[0]
 
 
 @task(default=True)
