@@ -61,7 +61,7 @@ def find_crossings(x, a=0):
 
     See http://stackoverflow.com/a/29674950/2823213"""
     x = np.atleast_1d(x)
-    return np.where(np.diff(np.signbit(x - a)))[0]
+    return np.where(np.diff(np.signbit(x - a).astype(int)))[0]
 
 
 def find_repeated_roots(x):
