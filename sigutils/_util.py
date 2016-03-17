@@ -5,6 +5,11 @@ from numpy.testing import assert_allclose
 import pandas as pd
 from scipy import signal
 
+def cont2discrete(sys, dt, method='bilinear'):
+    discrete_sys = signal.cont2discrete(sys, dt, method=method)[:-1]
+    if len(discrete_sys) == 2:
+        discrete_sys = tuple(np.squeeze(b_or_a) for b_or_a in discrete_sys)
+    return discrete_sys
 
 def log_bins(x, y, r=1.5):
     """Average data over logrithmically spaced intervals of fractional size r.
