@@ -2,7 +2,13 @@
 import sys
 import io
 
-import versioneer
+import imp
+fp, pathname, description = imp.find_module('versioneer')
+try:
+    versioneer = imp.load_module('versioneer', fp, pathname, description)
+finally:
+    if fp: fp.close()
+
 versioneer.VCS = 'git'
 versioneer.versionfile_source = 'sigutils/_version.py'
 versioneer.versionfile_build = 'sigutils/_version.py'

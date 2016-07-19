@@ -1,2 +1,3 @@
+include *.rst
 include versioneer.py
 include sigutils/_version.py
